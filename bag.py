@@ -50,7 +50,7 @@ class Bag:
         import random
         choice = random.choices(list(self.letters.keys()), list(self.letters.values()))
         self.letters.subtract(choice)
-        return choice
+        return choice[0]
 
     def get_point_value(self, letter: str) -> int:
         return [i for i in range(len(self.point_values)) if letter.upper() in self.point_values[i]][0]

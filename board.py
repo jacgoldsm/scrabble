@@ -36,6 +36,7 @@ class Square:
         return self._attribute_dict.get(self.attribute, 'white')
 
     def get_letter_value(self) -> int:
+        if self.attribute is None: return 1
         return int(self.attribute[0]) if self.attribute[1] == 'l' else 1
 
     def get_word_value(self) -> int:
@@ -44,10 +45,12 @@ class Square:
 
 class Board:
     squares: List[Square]
-    tiles: List[Tile]
+    letters: List[Tile]
 
     def restore_board(self, old_board) -> None:
-        self.tiles = old_board.tiles
+        self.bag = old_board.bag
+        self.squares = old_board.squares
+        self.letters = old_board.letters
 
 
     def _generate_word(self, starting_idx: int, axis: int) -> str:
@@ -83,16 +86,17 @@ class Board:
             word = self._generate_word(starting_idx, axis)
             
         _seen_3w_attr, _seen_2w_attr = False, False
-        word_quadruple = word,utils.idx_to_row_column_idx(starting_idx),axis
+        word_quadruple = word,*utils.idx_to_row_column_idx(starting_idx),axis
         word_range = utils.range_from_word_quadruple(*word_quadruple)
         for word_i, board_i in zip(range(len(word)), word_range):
-                current_letter = self.letters[board_i]
+                current_letter = self.letters[board_i].letter
                 assert current_letter is None
                 pv = (
                     self.bag.get_point_value(word[word_i])
                     if utils.letter_in_original_row_or_column(board_i, self._original_idx, axis)
                     else 1
                 )
+                print(f"{board_i}")
                 value = self.squares[board_i].get_letter_value() * pv
                 if self.squares[board_i].attribute == '3w':
                     _seen_3w_attr = True
@@ -100,8 +104,8 @@ class Board:
                     _seen_2w_attr = True
                 _score += value
                 self.letters[board_i] = word[word_i]
-                letter_above_or_left = self.tiles[board_i - 15] if axis == 0 else board_i - 1
-                letter_below_or_right = self.tiles[board_i + 15] if axis == 0 else board_i + 1
+                letter_above_or_left = self.letters[board_i - 15 if axis == 0 else board_i - 1].letter
+                letter_below_or_right = self.letters[board_i + 15 if axis == 0 else board_i + 1].letter
                 if recursive:
                     if letter_above_or_left is not None or letter_below_or_right is not None:
                         _score += self._add_word_impl(
@@ -126,19 +130,20 @@ class Board:
         On success, add the word and all dependent words to the board and return the total
         score, inclusive of multiplers. On failure, do not mutate board and raise exception.
         """
-        old_board = copy.deepcopy(self)
+        old_board = Board(self.bag, self.squares, self.letters)
+        print(f"{old_board=}")
         starting_idx = row_idx * 15 + col_idx
         assert axis in [0,1]
         self._original_idx = starting_idx
 
         try:
-            self._add_word_impl(word, starting_idx, axis, recursive=True)
+            score = self._add_word_impl(word, starting_idx, axis, recursive=True)
         except Exception as e:
             self.restore_board(old_board)
             raise e
+        return score
         
 
-                
 
     def _get_default_letters(self) -> List[Tile]:
         return [Tile() for _ in range(15*15)]
@@ -156,7 +161,7 @@ class Board:
                 square.attribute = '2l'
         return squares
 
-    def __init__(self, bag, squares: List[Square] = None, letters: List[Tile] = None):
+    def __init__(self, bag: Bag, squares: List[Square] = None, letters: List[Tile] = None):
         self.bag = bag
         self.squares = squares or self._get_default_squares()
         self.letters = letters or self._get_default_letters()
@@ -166,7 +171,6 @@ class Board:
         out_list.extend('__')
         out_list.extend([f" {str(i).zfill(2)} " for i in range(15)])
         for i  in range(15*15):
-            print(f"{i=}")
             if i % 15 == 0:
                 out_list.extend('\n' + str(i // 15).zfill(2))
             out_list.extend(colored(str(self.letters[i]), color=self.squares[i].color()))

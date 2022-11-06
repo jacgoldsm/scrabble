@@ -25,16 +25,17 @@ class Player:
 
     def _fail_if_invalid_letters(self, word: str) -> None:
         _self_letters = self.letters
-        for letter in word:
+        for letter in word.upper():
+            print(f"{letter=}")
+            print(f"{_self_letters=}")
             if letter not in _self_letters:
                 raise WordNotInLettersError("Cannot form word with current letters")
-            else:
-                if letter in _self_letters:
-                    _self_letters.remove(letter)
 
 
-    def try_to_play_word(self, current_board, word: str, row_idx: int, col_idx: int, axis: int=0) -> Board:
+    def try_to_play_word(self, current_board, word: str, row_idx: int, col_idx: int, axis: int=0) -> None:
         self._fail_if_invalid_letters(word)
-        calculate_score += current_board.add_word(word, row_idx, col_idx, axis)
-        self.letters = [letter for letter in self.letters if letter not in word.split('')]
-        return current_board
+        self.score += current_board.add_word(word, row_idx, col_idx, axis)
+        print(f"{word=}")
+        print(f"{self.letters=}")
+        for letter in word.upper():
+            self.letters.remove(letter)

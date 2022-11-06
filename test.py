@@ -4,6 +4,7 @@ import players
 import utils
 import board
 import unittest
+import dictionary
 
 
 # bag.py
@@ -62,6 +63,15 @@ class TestUtils(unittest.TestCase):
     def test_row_or_column_range_from_index(self):
         self.assertEqual(list(utils.row_or_column_range_from_index(6, 0)), list(range(0,15)))
         self.assertEqual(list(utils.row_or_column_range_from_index(6, 1)), list(range(6,216,15)))
+
+
+    def test_dictionary_works(self):
+        self.assertTrue(dictionary.is_valid_word('pea'))
+        self.assertTrue(dictionary.is_valid_word('pEa'))
+        self.assertTrue(dictionary.is_valid_word('anonymous'))
+        self.assertFalse(dictionary.is_valid_word('kdlfjalkdfii'))
+
+
 
 
 if __name__ == '__main__':

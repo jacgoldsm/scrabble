@@ -3,7 +3,11 @@ import players
 import board
 import utils
 from bag import Bag
+import dictionary
+import traceback
+import os
 
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
 def main():
@@ -30,6 +34,9 @@ def main():
             print(f"Player {player.name}: Enter a word ('__pass__' to pass, '__letters__' to trade in letters)")
             print(f"Your letters are {player.letters}")
             response = input()
+            if not dictionary.is_valid_word(response):
+                raise dictionary.WordNotFoundError("Not a valid word")
+
             if response == '__pass__':
                 continue
             elif response == '__letters__':
@@ -43,27 +50,33 @@ def main():
                     except Exception:
                         print("Invalid letters.")
                         letters = input()
-
-            if response == '__QUIT__':
+                    continue
+            elif response == '__QUIT__':
                 break
+
+
             print("""
             Enter 'row,column,orientation' to play the word. Orientation is 0 for across, 1 for down.
             row and column is the index of the leftmost/uppermost index.
             """)
 
             idx_triple = input().split(',')
+            idx_triple = [int(i) for i in idx_triple]
 
-            if idx_triple == '__QUIT__': break
+            if idx_triple == '__QUIT__': 
+                break
+
             flag = True
             while flag:
                 try:
                     if turn_one:
-                        utils.fail_if_middle_not_included(letters, *idx_triple)
+                        utils.fail_if_middle_not_included(response, *idx_triple)
                     current_board = player.try_to_play_word(
                         current_board, response.lower(), *idx_triple
                         )
                     flag = False
                 except Exception:
+                    print(traceback.format_exc())
                     print("Invalid Word, try again")
                     response = input()
 
