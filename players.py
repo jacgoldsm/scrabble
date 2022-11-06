@@ -1,4 +1,5 @@
 from board import Board
+import copy
 
 class WordNotInLettersError(Exception):
     pass
@@ -16,7 +17,6 @@ class Player:
         n = sum(self.board.bag.letters.values()) if n >= sum(self.board.bag.letters.values()) else n
         letters = [self.board.bag.choose_letter_at_random() for _ in range(n)]
         self.letters.extend(letters)
-        print(self.letters)
 
     def trade_in_letters(self, letters: str) -> None:
         self._fail_if_invalid_letters(letters)
@@ -24,18 +24,20 @@ class Player:
         self.draw_n_letters_from_bag(len(letters))
 
     def _fail_if_invalid_letters(self, word: str) -> None:
-        _self_letters = self.letters
+        _self_letters = copy.copy(self.letters)
         for letter in word.upper():
-            print(f"{letter=}")
-            print(f"{_self_letters=}")
             if letter not in _self_letters:
-                raise WordNotInLettersError("Cannot form word with current letters")
+                if '' in _self_letters:
+                    _letter = ''
+                else:
+                    raise WordNotInLettersError("Cannot form word with current letters")
+            else:
+                _letter = letter
+                _self_letters.remove(_letter)
 
 
-    def try_to_play_word(self, current_board, word: str, row_idx: int, col_idx: int, axis: int=0) -> None:
+    def try_to_play_word(self, current_board: Board, word: str, row_idx: int, col_idx: int, axis: int=0) -> None:
         self._fail_if_invalid_letters(word)
         self.score += current_board.add_word(word, row_idx, col_idx, axis)
-        print(f"{word=}")
-        print(f"{self.letters=}")
         for letter in word.upper():
             self.letters.remove(letter)

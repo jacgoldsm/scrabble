@@ -75,9 +75,9 @@ def main():
                         current_board, response.lower(), *idx_triple
                         )
                     flag = False
-                except Exception:
+                except Exception as e:
                     print(traceback.format_exc())
-                    print("Invalid Word, try again")
+                    print(e)
                     response = input()
 
             print(current_board)

@@ -1,9 +1,9 @@
-from typing import List
+from typing import List, Iterable
 from termcolor import colored
 import mapping
 from bag import Bag
 import utils
-import copy
+
 
 class LetterError(Exception):
     pass
@@ -29,7 +29,6 @@ class Square:
     }
 
     def __init__(self, attribute: str = None):
-        assert attribute in self._possible_attributes or attribute is None
         self.attribute = attribute
 
     def color(self):
@@ -54,90 +53,115 @@ class Board:
 
 
     def _generate_word(self, starting_idx: int, axis: int) -> str:
+        """
+        Given an index and an orientation, find the word that contains that index in that orientation.
+        Example:
+        0  1  2  3  4  5  ...
+        H  E  L^ L  O  '' ...
+        
+        Would return HELLO
+        """
         row_or_column = utils.row_or_column_range_from_index(starting_idx, axis)
         after_word_list = []
-        after_range = (elem for elem in row_or_column if elem >= starting_idx)
+        after_range = [elem for elem in row_or_column if elem >= starting_idx]
         for i in after_range:
-            if self.letters[i] is None:
+            if self.letters[i].letter is None:
                 break
-            after_word_list.append(self.tiles[i])
+            after_word_list.append(self.letters[i].letter)
 
         before_word_list = []
-        before_range = (elem for elem in row_or_column if elem < starting_idx)
+        before_range = [elem for elem in row_or_column if elem < starting_idx]
         for i in reversed(before_range):
-            if self.letters[i] is None:
+            if self.letters[i].letter is None:
                 break
-            before_word_list.append(self.tiles[i])
+            before_word_list.append(self.letters[i].letter)
             # HE[L]LO will be stored as [E,H] and [L,L,O]
-            word = "".join(reversed(before_word_list) + after_word_list)
-            return word
+        word = "".join(list(reversed(before_word_list)) + after_word_list)
+        return word
 
+    def _add_letters_to_board(self, new_letters: str, new_letters_index_range: Iterable) -> None:
+        """
+        Takes a string of new letters and a range of board indices and adds the new letters at the new indices.
+        """
+        if new_letters is None: return
+        for word_idx, board_idx in zip(range(len(new_letters)), new_letters_index_range):
+            self.letters[board_idx] = Tile(new_letters[word_idx])
         
-    def _add_word_impl(self, word: str, starting_idx: int, axis: int, recursive: bool) -> int:
+    def _add_word_impl(self, 
+        new_letters: str, 
+        new_letters_index_range: range, 
+        starting_idx: int, 
+        axis: int, 
+        recursive: bool
+    ) -> int:
         """
-        Add a word laid out horizontally. If this word is the original word played,
-        check each column for vertical words and call `add_word_vertical` if needed.
-        Otherwise, don't do that. Return the score from the original word and any child
-        vertical words from the recursive call. Only check for '* word scores' or '* letter scores' for the
-        original word.
+        Adds new letters to the board and then loops through the new word added, adding to the player's score.
+        Recursively adds scoring to any words that are formed in the opposite orientation, but
+        only applies multiplier to letters that were in the original letter range.
         """
+
+        self._add_letters_to_board(new_letters, new_letters_index_range)
+        
+
+        # entire word, including letters that are already on the board
+        word = self._generate_word(starting_idx, axis)
         _score = 0
-        if word is None:
-            word = self._generate_word(starting_idx, axis)
-            
         _seen_3w_attr, _seen_2w_attr = False, False
-        word_quadruple = word,*utils.idx_to_row_column_idx(starting_idx),axis
+        word_quadruple = word, *utils.idx_to_row_column_idx(starting_idx), axis
         word_range = utils.range_from_word_quadruple(*word_quadruple)
+
         for word_i, board_i in zip(range(len(word)), word_range):
-                current_letter = self.letters[board_i].letter
-                assert current_letter is None
                 pv = (
                     self.bag.get_point_value(word[word_i])
-                    if utils.letter_in_original_row_or_column(board_i, self._original_idx, axis)
+                    if board_i in new_letters_index_range # only apply letter multiplier if it's a new letter
                     else 1
                 )
-                print(f"{board_i}")
+    
                 value = self.squares[board_i].get_letter_value() * pv
-                if self.squares[board_i].attribute == '3w':
-                    _seen_3w_attr = True
-                elif self.squares[board_i].attribute == '2w':
-                    _seen_2w_attr = True
+                # only apply word multiplier if some letter in word both has attribute and is a new letter
+                if board_i in new_letters_index_range: 
+                    if self.squares[board_i].attribute == '3w':
+                        _seen_3w_attr = True
+                    elif self.squares[board_i].attribute == '2w':
+                        _seen_2w_attr = True
                 _score += value
-                self.letters[board_i] = word[word_i]
+
                 letter_above_or_left = self.letters[board_i - 15 if axis == 0 else board_i - 1].letter
                 letter_below_or_right = self.letters[board_i + 15 if axis == 0 else board_i + 1].letter
                 if recursive:
                     if letter_above_or_left is not None or letter_below_or_right is not None:
                         _score += self._add_word_impl(
-                        word=None, 
+                        new_letters=None,
+                        new_letters_index_range=[board_i], # used to determine if letter/word multipliers apply
                         starting_idx=board_i, 
                         axis = 1 if axis == 0 else 0,
                         recursive=False
                         )
 
-        if utils.letter_in_original_row_or_column(board_i, self._original_idx, axis):
-            if _seen_2w_attr:
+        if _seen_2w_attr:
                 _score *= 2
-            elif _seen_3w_attr:
+        elif _seen_3w_attr:
                 _score *= 3
 
         return _score
 
 
 
-    def add_word(self, word: str, row_idx: int, col_idx: int, axis: int=0) -> int:
+    def add_word(self, new_letters: str, row_idx: int, col_idx: int, axis: int=0) -> int:
         """
         On success, add the word and all dependent words to the board and return the total
         score, inclusive of multiplers. On failure, do not mutate board and raise exception.
         """
         old_board = Board(self.bag, self.squares, self.letters)
-        print(f"{old_board=}")
-        starting_idx = row_idx * 15 + col_idx
-        assert axis in [0,1]
+        starting_idx = utils.row_column_idx_to_idx(row_idx, col_idx)
+        new_letters_index_range = utils.range_from_word_quadruple(new_letters,row_idx,col_idx,axis)
+        if axis not in range(2):
+            print(axis)
+            raise ValueError("`axis` argument must be `0` or `1`")
         self._original_idx = starting_idx
 
         try:
-            score = self._add_word_impl(word, starting_idx, axis, recursive=True)
+            score = self._add_word_impl(new_letters, new_letters_index_range, starting_idx, axis, recursive=True)
         except Exception as e:
             self.restore_board(old_board)
             raise e
