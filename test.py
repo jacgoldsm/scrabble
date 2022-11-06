@@ -28,9 +28,9 @@ class TestPlayer(unittest.TestCase):
         current_bag = bag.Bag()
         player = players.Player(board.Board(current_bag), "Jacob")
         with self.assertRaises(players.WordNotInLettersError):
-            _ = player.trade_in_letters('abcdefgh')
+            player.trade_in_letters('abcdefgh')
         with self.assertRaises(AssertionError):
-            _ = player.draw_n_letters_from_bag(8)
+            player.draw_n_letters_from_bag(8)
 
 # utils.py
 
@@ -40,6 +40,28 @@ class TestUtils(unittest.TestCase):
             utils.fail_if_middle_not_included('hello', 1,5,0)
             utils.fail_if_middle_not_included('hello', 10,5,1)
         self.assertEqual(utils.fail_if_middle_not_included('hello', 7,7,0), None)
+
+    def test_letter_in_original_works(self):
+        self.assertTrue(utils.letter_in_original_row_or_column(20, 25, 0))
+        self.assertTrue(utils.letter_in_original_row_or_column(20, 50, 1))
+        self.assertFalse(utils.letter_in_original_row_or_column(20,25, 1))
+        self.assertFalse(utils.letter_in_original_row_or_column(20, 50, 0))
+
+    def test_range_from_word_quadruple_works(self):
+        self.assertEqual(list(utils.range_from_word_quadruple('hello', 3, 4, 0)), list(range(49,54)))
+        self.assertEqual(list(utils.range_from_word_quadruple('hello', 3, 4, 1)), list(range(49,124,15)))
+
+    def test_row_column_idx_to_idx(self):
+        self.assertEqual(utils.row_column_idx_to_idx(0,0), 0)
+        self.assertEqual(utils.row_column_idx_to_idx(12,3), 183)
+
+    def test_idx_to_row_column_idx(self):
+        self.assertEqual(utils.idx_to_row_column_idx(0), (0,0))
+        self.assertEqual(utils.idx_to_row_column_idx(183), (12,3))
+
+    def test_row_or_column_range_from_index(self):
+        self.assertEqual(list(utils.row_or_column_range_from_index(6, 0)), list(range(0,15)))
+        self.assertEqual(list(utils.row_or_column_range_from_index(6, 1)), list(range(6,216,15)))
 
 
 if __name__ == '__main__':
