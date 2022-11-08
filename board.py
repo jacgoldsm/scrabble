@@ -130,7 +130,7 @@ class Board:
                 current_score += self._add_word_impl(
                     word=word_tmp,
                     word_index_range=word_tmp_range,
-                    axis=1 if axis == 0 else 0,
+                    new_letters_index_range=new_letters_index_range,
                 )
 
         # entire word, including letters that are already on the board
