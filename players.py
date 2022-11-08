@@ -1,8 +1,10 @@
 from board import Board
 import copy
 
+
 class WordNotInLettersError(Exception):
     pass
+
 
 class Player:
     def __init__(self, board, name):
@@ -14,7 +16,11 @@ class Player:
 
     def draw_n_letters_from_bag(self, n: int) -> None:
         assert n < 8
-        n = sum(self.board.bag.letters.values()) if n >= sum(self.board.bag.letters.values()) else n
+        n = (
+            sum(self.board.bag.letters.values())
+            if n >= sum(self.board.bag.letters.values())
+            else n
+        )
         letters = [self.board.bag.choose_letter_at_random() for _ in range(n)]
         self.letters.extend(letters)
 
@@ -27,16 +33,17 @@ class Player:
         _self_letters = copy.copy(self.letters)
         for letter in word.upper():
             if letter not in _self_letters:
-                if '' in _self_letters:
-                    _letter = ''
+                if "" in _self_letters:
+                    _letter = ""
                 else:
                     raise WordNotInLettersError("Cannot form word with current letters")
             else:
                 _letter = letter
                 _self_letters.remove(_letter)
 
-
-    def try_to_play_word(self, current_board: Board, word: str, row_idx: int, col_idx: int, axis: int=0) -> None:
+    def try_to_play_word(
+        self, current_board: Board, word: str, row_idx: int, col_idx: int, axis: int = 0
+    ) -> None:
         self._fail_if_invalid_letters(word)
         self.score += current_board.add_word(word, row_idx, col_idx, axis)
         for letter in word.upper():

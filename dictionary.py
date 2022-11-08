@@ -1,6 +1,5 @@
 import requests
-import os
-print(os.getcwd())
+
 try:
     with open("./words.txt", 'r') as f:
         words = f.read().split("\n")

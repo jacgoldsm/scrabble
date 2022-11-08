@@ -22,24 +22,25 @@ def main():
 
     print("Welcome to SCRABBLE!. Enter '__QUIT__' to quit at any time.")
 
-
-    
-    
     turn_one = True
     while sum(bag.letters.values()) > 0:
         for player in player_list:
-            print("RED = triple word score, MAGENTA = double word score BLUE = ",
-                  "triple letter score, CYAN = double letter score")
+            print(
+                "RED = triple word score, MAGENTA = double word score BLUE = ",
+                "triple letter score, CYAN = double letter score",
+            )
             print(current_board)
-            print(f"Player {player.name}: Enter a word ('__pass__' to pass, '__letters__' to trade in letters)")
+            print(
+                f"Player {player.name}: Enter a word ('__pass__' to pass, '__letters__' to trade in letters)"
+            )
             print(f"Your letters are {player.letters}")
             response = input()
             if not dictionary.is_valid_word(response):
                 raise dictionary.WordNotFoundError("Not a valid word")
 
-            if response == '__pass__':
+            if response == "__pass__":
                 continue
-            elif response == '__letters__':
+            elif response == "__letters__":
                 print("Enter the letters you would like to exchange.")
                 letters = input()
                 flag = True
@@ -51,19 +52,20 @@ def main():
                         print("Invalid letters.")
                         letters = input()
                     continue
-            elif response == '__QUIT__':
+            elif response == "__QUIT__":
                 break
 
-
-            print("""
+            print(
+                """
             Enter 'row,column,orientation' to play the word. Orientation is 0 for across, 1 for down.
             row and column is the index of the leftmost/uppermost index.
-            """)
+            """
+            )
 
-            idx_triple = input().split(',')
+            idx_triple = input().split(",")
             idx_triple = [int(i) for i in idx_triple]
 
-            if idx_triple == '__QUIT__': 
+            if idx_triple == "__QUIT__":
                 break
 
             flag = True
@@ -73,7 +75,7 @@ def main():
                         utils.fail_if_middle_not_included(response, *idx_triple)
                     current_board = player.try_to_play_word(
                         current_board, response.lower(), *idx_triple
-                        )
+                    )
                     flag = False
                 except Exception as e:
                     print(traceback.format_exc())
@@ -83,8 +85,7 @@ def main():
             print(current_board)
             turn_one = False
 
-            
-            players_sorted = sorted(player_list, key = lambda p: p.score, reverse=True)
+            players_sorted = sorted(player_list, key=lambda p: p.score, reverse=True)
 
             print(f"GAME OVER! Player {players_sorted[0].name} Wins! Scores:")
 
@@ -93,11 +94,11 @@ def main():
 
             print("Play Again? (Y/N)")
             resp = input()
-            if resp.lower() == 'y':
+            if resp.lower() == "y":
                 main()
             else:
                 sys.exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
