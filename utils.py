@@ -1,4 +1,9 @@
 import itertools
+import copy
+
+
+class WordNotInLettersError(Exception):
+    pass
 
 
 def fail_if_middle_not_included(
@@ -38,3 +43,17 @@ def row_column_idx_to_idx(row_idx: int, col_idx: int) -> int:
 
 def idx_to_row_column_idx(idx: int) -> int:
     return (idx // 15, idx % 15)
+
+def fail_if_invalid_letters(player_letters: str, word: str) -> None:
+    player_letters = copy.copy(player_letters)
+    for letter in word.upper():
+        if letter not in player_letters:
+            if "" in player_letters:
+                    _letter = ""
+            else:
+                raise WordNotInLettersError("Cannot form word with current letters")
+        else:
+            _letter = letter
+            player_letters.remove(_letter)
+            
+            

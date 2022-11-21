@@ -39,6 +39,7 @@ def main():
             while incorrect_word_flag:
                 if not dictionary.is_valid_word(response):
                     print("Not a valid word")
+                    response = input()
                 else:
                     incorrect_word_flag = False
 
@@ -81,9 +82,9 @@ def main():
                         )
                     flag = False
                 except Exception as e:
-                    print(traceback.format_exc())
                     print(e)
-                    response = input()
+                    idx_triple = input().split(',')
+                    idx_triple = [int(i) for i in idx_triple]
 
             print(current_board)
             turn_one = False

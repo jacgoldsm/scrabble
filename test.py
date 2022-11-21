@@ -28,7 +28,7 @@ class TestPlayer(unittest.TestCase):
     def test_bad_letters_fail(self):
         current_bag = bag.Bag()
         player = players.Player(board.Board(current_bag), "Jacob")
-        with self.assertRaises(players.WordNotInLettersError):
+        with self.assertRaises(utils.WordNotInLettersError):
             player.trade_in_letters("abcdefgh")
         with self.assertRaises(AssertionError):
             player.draw_n_letters_from_bag(8)
