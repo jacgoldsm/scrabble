@@ -44,7 +44,7 @@ class Player:
     def try_to_play_word(
         self, current_board: Board, word: str, row_idx: int, col_idx: int, axis: int = 0
     ) -> None:
-        self._fail_if_invalid_letters(word)
         self.score += current_board.add_word(word, row_idx, col_idx, axis)
         for letter in word.upper():
-            self.letters.remove(letter)
+            # the only case where `letter` won't be in `self.letters` is if it's a blank tile
+            self.letters.remove(letter if letter in self.letters else '')

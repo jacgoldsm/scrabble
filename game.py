@@ -5,9 +5,6 @@ import utils
 from bag import Bag
 import dictionary
 import traceback
-import os
-
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
 def main():
@@ -37,8 +34,13 @@ def main():
             print(f"Player {player.name}: Enter a word ('__pass__' to pass, '__letters__' to trade in letters)")
             print(f"Your letters are {player.letters}")
             response = input()
-            if not dictionary.is_valid_word(response):
-                raise dictionary.WordNotFoundError("Not a valid word")
+
+            incorrect_word_flag = True
+            while incorrect_word_flag:
+                if not dictionary.is_valid_word(response):
+                    print("Not a valid word")
+                else:
+                    incorrect_word_flag = False
 
             if response == '__pass__':
                 continue
@@ -74,7 +76,7 @@ def main():
                 try:
                     if turn_one:
                         utils.fail_if_middle_not_included(response, *idx_triple)
-                    current_board = player.try_to_play_word(
+                    player.try_to_play_word(
                         current_board, response.lower(), *idx_triple
                         )
                     flag = False
@@ -87,19 +89,19 @@ def main():
             turn_one = False
 
             
-        players_sorted = sorted(player_list, key = lambda p: p.score, reverse=True)
+    players_sorted = sorted(player_list, key = lambda p: p.score, reverse=True)
 
-        print(f"GAME OVER! Player {players_sorted[0].name} Wins! Scores:")
+    print(f"GAME OVER! Player {players_sorted[0].name} Wins! Scores:")
 
-        for player in players_sorted:
-            print(f"Player {player.name}: {player.score} points")
+    for player in players_sorted:
+        print(f"Player {player.name}: {player.score} points")
 
-        print("Play Again? (Y/N)")
-        resp = input()
-        if resp.lower() == 'y':
-            main()
-        else:
-            sys.exit(0)
+    print("Play Again? (Y/N)")
+    resp = input()
+    if resp.lower() == 'y':
+        main()
+    else:
+        sys.exit(0)
 
 
 if __name__ == '__main__':

@@ -2,6 +2,7 @@ from typing import List, Iterable
 from termcolor import colored
 import mapping
 from bag import Bag
+import players
 import utils
 
 
@@ -153,6 +154,8 @@ class Board:
         new_letters_index_range: range,
     ) -> int:
 
+        seen_2w_attr, seen_3w_attr = False, False
+
         word_score = 0
         for word_i, board_i in zip(range(len(word)), word_index_range):
             pv = (
@@ -177,25 +180,45 @@ class Board:
 
         return word_score
 
-    def add_word(
-        self, new_letters: str, row_idx: int, col_idx: int, axis: int = 0
-    ) -> int:
+    def add_word(self, new_word: str, row_idx: int, col_idx: int, axis: int = 0) -> int:
         """
         On success, add the word and all dependent words to the board and return the total
         score, inclusive of multiplers. On failure, do not mutate board and raise exception.
         """
         old_board = Board(self.bag, self.squares, self.letters)
         starting_idx = utils.row_column_idx_to_idx(row_idx, col_idx)
-        new_letters_index_range = utils.range_from_word_quadruple(
-            new_letters, row_idx, col_idx, axis
+        word_index_range = utils.range_from_word_quadruple(
+            new_word, row_idx, col_idx, axis
         )
+        # this should probably be refactored, but
+        # if word is H E L L O
+        #            ^ ^
+        # with LLO being the new letters and `H` at 1,1,0, then
+        # `new_letters_index_range_tuples` = (3,2), (4,3), (5,4)
+        # so `new_letters_index_range` = (2,3,4)
+        # and `new_letters` = 'LLO'
+        # which is what we want.
+
+        new_letters_index_range_tuples = (
+            (board_i, word_i)
+            for board_i, word_i in zip(word_index_range, range(len(new_word)))
+            if self.letters[board_i].letter == ""
+        )
+        new_letters_index_range = (i[0] for i in new_letters_index_range_tuples)
+        new_letters = "".join([new_word[i[1]] for i in new_letters_index_range_tuples])
+
+        Player._fail_if_invalid_letters(player, new_letters)
+
         if axis not in range(2):
             raise ValueError("`axis` argument must be `0` or `1`")
         self._original_idx = starting_idx
 
         try:
             score = self._add_words_impl(
-                new_letters, new_letters_index_range, starting_idx, axis, recursive=True
+                new_letters,
+                new_letters_index_range,
+                starting_idx,
+                axis,
             )
         except Exception as e:
             self.restore_board(old_board)
