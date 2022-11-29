@@ -1,8 +1,9 @@
-from typing import List, Iterable
+from typing import List, Tuple
 from termcolor import colored
 import mapping
 from bag import Bag
 import utils
+import dictionary
 
 
 class LetterError(Exception):
@@ -44,16 +45,70 @@ class Square:
         return int(self.attribute[0]) if self.attribute[1] == "w" else 1
 
 
+class Squares:
+    data: List[Square]
+
+    def __getitem__(self, tuple_or_idx):
+        if isinstance(tuple_or_idx, int):
+            return self.data[tuple_or_idx]
+        row, col = tuple_or_idx
+        return self.data[row * 15 + col]
+
+    def get(self, tuple_or_idx, default):
+        try:
+            return self.__getitem__(tuple_or_idx)
+        except Exception:
+            return default
+
+    def __init__(self):
+        squares = [Square() for _ in range(15 * 15)]
+        for idx, square in enumerate(squares):
+            if idx in mapping._3w_idx:
+                square.attribute = "3w"
+            elif idx in mapping._3l_idx:
+                square.attribute = "3l"
+            elif idx in mapping._2w_idx:
+                square.attribute = "2w"
+            elif idx in mapping._2l_idx:
+                square.attribute = "2l"
+        self.data = squares
+
+
+class Tiles:
+    data: List[Tile]
+
+    def __getitem__(self, tuple_or_idx):
+        if isinstance(tuple_or_idx, int):
+            return self.data[tuple_or_idx]
+        row, col = tuple_or_idx
+        return self.data[row * 15 + col]
+
+    def get(self, tuple_or_idx, default):
+        try:
+            return self.__getitem__(tuple_or_idx)
+        except Exception:
+            return default
+
+    def __setitem__(self, tuple_or_idx, new):
+        if isinstance(tuple_or_idx, int):
+            self.data[tuple_or_idx] = new
+        row, col = tuple_or_idx
+        self.data[row * 15 + col] = new
+
+    def __init__(self):
+        self.data = [Tile() for _ in range(15 * 15)]
+
+
 class Board:
-    squares: List[Square]
-    letters: List[Tile]
+    squares: Squares
+    letters: Tiles
 
     def restore_board(self, old_board) -> None:
         self.bag = old_board.bag
         self.squares = old_board.squares
         self.letters = old_board.letters
 
-    def _generate_word(self, starting_idx: int, axis: int) -> str:
+    def _generate_word(self, row_idx: int, col_idx: int, axis: int) -> str:
         """
         Given an index and an orientation, find the word that contains that index in that orientation.
         Example:
@@ -62,6 +117,7 @@ class Board:
 
         Would return HELLO
         """
+        starting_idx = utils.row_column_idx_to_idx(row_idx, col_idx)
         row_or_column = utils.row_or_column_range_from_index(starting_idx, axis)
         after_word_list = []
         after_range = [elem for elem in row_or_column if elem >= starting_idx]
@@ -78,27 +134,42 @@ class Board:
             before_word_list.append(self.letters[i].letter)
             # HE[L]LO will be stored as [E,H] and [L,L,O]
         word = "".join(list(reversed(before_word_list)) + after_word_list)
+        if not dictionary.is_valid_word(word) and word is not None and word != '':
+            print(word)
+            raise Exception(f"Move resulted in invalid word: {word}")
         return word
 
     def _add_letters_to_board(
-        self, new_letters: str, new_letters_index_range: Iterable
+        self,
+        new_letters: str,
+        new_letters_starting_row: int,
+        new_letters_starting_col: int,
+        axis: int,
     ) -> None:
         """
         Takes a string of new letters and a range of board indices and adds the new letters at the new indices.
         """
         if new_letters is None:
             return
-        for word_idx, board_idx in zip(
-            range(len(new_letters)), new_letters_index_range
-        ):
-            self.letters[board_idx] = Tile(new_letters[word_idx])
+        if axis == 0:
+            for idx in range(len(new_letters)):
+                self.letters[
+                    new_letters_starting_row, new_letters_starting_col + idx
+                ] = Tile(new_letters[idx])
+        else:
+            for idx in range(len(new_letters)):
+                self.letters[
+                    new_letters_starting_row + idx, new_letters_starting_col
+                ] = Tile(new_letters[idx])
 
     def _add_words_impl(
         self,
-        new_letters: str,
-        new_letters_index_range: range,
-        starting_idx: int,
-        axis: int,
+        new_letters,
+        new_letters_starting_row,
+        new_letters_starting_col,
+        row_idx,
+        col_idx,
+        axis,
     ) -> int:
         """
         Add new letters to the board and count up the score from the principal word (in the original orientation)
@@ -106,43 +177,72 @@ class Board:
         """
 
         self._add_letters_to_board(
-            new_letters=new_letters, new_letters_index_range=new_letters_index_range
+            new_letters=new_letters,
+            new_letters_starting_row=new_letters_starting_row,
+            new_letters_starting_col=new_letters_starting_col,
+            axis=axis,
         )
-     
-        current_score = 0
 
-        for board_i in new_letters_index_range:
-            letter_above_or_left = self.letters[
-                (board_i - 15) if axis == 0 else (board_i - 1)
-            ].letter
-            letter_below_or_right = self.letters[
-                (board_i + 15) if axis == 0 else (board_i + 1)
-            ].letter
+        if axis == 0:
+            new_letters_index_tuples = [
+                (new_letters_starting_row, new_letters_starting_col + i)
+                for i in range(len(new_letters))
+            ]
+        else:
+            new_letters_index_tuples = [
+                (new_letters_starting_row + i, new_letters_starting_col)
+                for i in range(len(new_letters))
+            ]
+
+        current_score = 0
+        for idx in range(len(new_letters)):
+            if axis == 0:
+                letter_above_or_left, letter_below_or_right = (
+                    self.letters.get(
+                        (new_letters_starting_row - 1, new_letters_starting_col + idx),
+                        None,
+                    ),
+                    self.letters.get(
+                        (new_letters_starting_row + 1, new_letters_starting_col + idx),
+                        None,
+                    ),
+                )
+            else:
+                letter_above_or_left, letter_below_or_right = (
+                    self.letters.get(
+                        (new_letters_starting_row + idx, new_letters_starting_col - 1),
+                        None,
+                    ),
+                    self.letters.get(
+                        (new_letters_starting_row + idx, new_letters_starting_col + 1),
+                        None,
+                    ),
+                )
+
+            starting_row = new_letters_starting_row if axis == 0 else idx
+            starting_col = new_letters_starting_col if axis == 1 else idx
 
             if letter_above_or_left is not None or letter_below_or_right is not None:
-                word_tmp = self._generate_word(starting_idx=board_i)
-                word_tmp_quadruple = (
-                    word,
-                    *utils.idx_to_row_column_idx(starting_idx=board_i),
-                    axis,
+                word_tmp = self._generate_word(
+                    row_idx=starting_row, col_idx=starting_col, axis=axis
                 )
-                word_tmp_range = utils.range_from_word_quadruple(*word_tmp_quadruple)
 
                 current_score += self._add_word_impl(
                     word=word_tmp,
-                    word_index_range=word_tmp_range,
-                    new_letters_index_range=new_letters_index_range,
+                    row_idx=row_idx,
+                    col_idx=col_idx,
+                    new_letters_index_tuples=new_letters_index_tuples,
+                    axis=axis,
                 )
 
         # entire word, including letters that are already on the board
-        word = self._generate_word(starting_idx, axis)
-        word_quadruple = word, *utils.idx_to_row_column_idx(starting_idx), axis
-        word_range = utils.range_from_word_quadruple(*word_quadruple)
-
+        word = self._generate_word(row_idx, col_idx, axis)
         current_score += self._add_word_impl(
             word=word,
-            word_index_range=word_range,
-            new_letters_index_range=new_letters_index_range,
+            row_idx=row_idx,
+            col_idx=col_idx,
+            new_letters_index_tuples=new_letters_index_tuples,
+            axis=axis,
         )
 
         return current_score
@@ -150,27 +250,38 @@ class Board:
     def _add_word_impl(
         self,
         word: str,
-        word_index_range: range,
-        new_letters_index_range: range,
+        row_idx: int,
+        col_idx: int,
+        new_letters_index_tuples: List[Tuple[int]],
+        axis: int,
     ) -> int:
+
+        if axis == 0:
+            total_letters_index_tuples = [
+                (row_idx, col_idx + i) for i in range(len(word))
+            ]
+        else:
+            total_letters_index_tuples = [
+                (row_idx + i, col_idx) for i in range(len(word))
+            ]
 
         seen_2w_attr, seen_3w_attr = False, False
 
         word_score = 0
-        for word_i, board_i in zip(range(len(word)), word_index_range):
+        for (row, col), letter in zip(total_letters_index_tuples, word):
             pv = (
-                self.bag.get_point_value(word[word_i])
-                if board_i
-                in new_letters_index_range  # only apply letter multiplier if it's a new letter
+                self.bag.get_point_value(letter)
+                if (row, col)
+                in new_letters_index_tuples  # only apply letter multiplier if it's a new letter
                 else 1
             )
 
-            word_score += self.squares[board_i].get_letter_value() * pv
+            word_score += self.squares[row, col].get_letter_value() * pv
             # only apply word multiplier if some letter in word both has attribute and is a new letter
-            if board_i in new_letters_index_range:
-                if self.squares[board_i].attribute == "3w":
+            if (row, col) in new_letters_index_tuples:
+                if self.squares[row, col].attribute == "3w":
                     seen_3w_attr = True
-                elif self.squares[board_i].attribute == "2w":
+                elif self.squares[row, col].attribute == "2w":
                     seen_2w_attr = True
 
         if seen_2w_attr:
@@ -180,76 +291,60 @@ class Board:
 
         return word_score
 
-    def add_word(self, player_letters: str, new_word: str, row_idx: int, col_idx: int, axis: int = 0) -> int:
+    def add_word(
+        self,
+        player_letters: str,
+        new_word: str,
+        row_idx: int,
+        col_idx: int,
+        axis: int = 0,
+    ) -> int:
         """
         On success, add the word and all dependent words to the board and return the total
         score, inclusive of multiplers. On failure, do not mutate board and raise exception.
         """
         old_board = Board(self.bag, self.squares, self.letters)
-        starting_idx = utils.row_column_idx_to_idx(row_idx, col_idx)
-        word_index_range = list(utils.range_from_word_quadruple(
-            new_word, row_idx, col_idx, axis
-        ))
-        # this should probably be refactored, but
-        # if word is H E L L O
-        #            ^ ^
-        # with LLO being the new letters and `H` at 1,1,0, then
-        # `new_letters_index_range_tuples` = (3,2), (4,3), (5,4)
-        # so `new_letters_index_range` = (2,3,4)
-        # and `new_letters` = 'LLO'
-        # which is what we want.
 
-        new_letters_index_range_tuples = [
-            (board_i, word_i)
-            for board_i, word_i in zip(word_index_range, range(len(new_word)))
-            if self.letters[board_i].letter is None
-        ]
-      
-        new_letters_index_range = (i[0] for i in new_letters_index_range_tuples)
-        new_letters = "".join([new_word[i[1]] for i in new_letters_index_range_tuples])
-
-
-
-        utils.fail_if_invalid_letters(player_letters, new_letters)
-
-        if axis not in range(2):
+        if axis == 0:
+            new_letters = [
+                letter
+                for i, letter in enumerate(new_word)
+                if self.letters[row_idx, col_idx + i].letter is None
+            ]
+            new_letters_starting_row = row_idx
+            new_letters_starting_col = col_idx + (len(new_word) - len(new_letters))
+        elif axis == 1:
+            new_letters = [
+                letter
+                for i, letter in enumerate(new_word)
+                if self.letters[row_idx + i, col_idx].letter is None
+            ]
+            new_letters_starting_row = row_idx + (len(new_word) - len(new_letters))
+            new_letters_starting_col = col_idx
+        else:
             raise ValueError("`axis` argument must be `0` or `1`")
-        self._original_idx = starting_idx
+
+        new_letters = "".join(new_letters)
+        utils.fail_if_invalid_letters(player_letters, new_letters)
 
         try:
             score = self._add_words_impl(
                 new_letters,
-                new_letters_index_range,
-                starting_idx,
+                new_letters_starting_row,
+                new_letters_starting_col,
+                row_idx,
+                col_idx,
                 axis,
             )
         except Exception as e:
             self.restore_board(old_board)
             raise e
-        return score
+        return score, new_letters
 
-    def _get_default_letters(self) -> List[Tile]:
-        return [Tile() for _ in range(15 * 15)]
-
-    def _get_default_squares(self) -> List[Square]:
-        squares = [Square() for _ in range(15 * 15)]
-        for idx, square in enumerate(squares):
-            if idx in mapping._3w_idx:
-                square.attribute = "3w"
-            elif idx in mapping._3l_idx:
-                square.attribute = "3l"
-            elif idx in mapping._2w_idx:
-                square.attribute = "2w"
-            elif idx in mapping._2l_idx:
-                square.attribute = "2l"
-        return squares
-
-    def __init__(
-        self, bag: Bag, squares: List[Square] = None, letters: List[Tile] = None
-    ):
+    def __init__(self, bag: Bag, squares: Squares = None, letters: Tiles = None):
         self.bag = bag
-        self.squares = squares or self._get_default_squares()
-        self.letters = letters or self._get_default_letters()
+        self.squares = squares or Squares()
+        self.letters = letters or Tiles()
 
     def __str__(self) -> str:
         out_list = []

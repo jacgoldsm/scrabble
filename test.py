@@ -28,7 +28,7 @@ class TestPlayer(unittest.TestCase):
     def test_bad_letters_fail(self):
         current_bag = bag.Bag()
         player = players.Player(board.Board(current_bag), "Jacob")
-        with self.assertRaises(utils.WordNotInLettersError):
+        with self.assertRaises(Exception):
             player.trade_in_letters("abcdefgh")
         with self.assertRaises(AssertionError):
             player.draw_n_letters_from_bag(8)
@@ -80,6 +80,22 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(dictionary.is_valid_word("pEa"))
         self.assertTrue(dictionary.is_valid_word("anonymous"))
         self.assertFalse(dictionary.is_valid_word("kdlfjalkdfii"))
+
+    class TestBoard(unittest.TestCase):
+        def __init__(self):
+            self.board = board.Board()
+            self.board.letters[7, 7].letter = "B"
+            self.board.letters[7, 8].letter = "E"
+            self.board.letters[7, 9].letter = "E"
+
+        def test_item_works(self):
+            self.assertEqual(self.board.letters[7, 7], "B")
+            self.assertEqual(self.board.letters[7 * 15 + 7], "B")
+            self.assertEqual(
+                self.board.letters[14, 14], self.board.letters[14 * 15 + 14]
+            )
+            self.assertEqual(self.board.letters.get(10000, None), None)
+            self.assertEqual(self.board.letters.get(1000, 1000, None), None)
 
 
 if __name__ == "__main__":
