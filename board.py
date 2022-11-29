@@ -134,7 +134,7 @@ class Board:
             before_word_list.append(self.letters[i].letter)
             # HE[L]LO will be stored as [E,H] and [L,L,O]
         word = "".join(list(reversed(before_word_list)) + after_word_list)
-        if not dictionary.is_valid_word(word) and word is not None and word != '':
+        if not dictionary.is_valid_word(word) and word != '':
             print(word)
             raise Exception(f"Move resulted in invalid word: {word}")
         return word
